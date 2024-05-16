@@ -243,90 +243,85 @@ def PredGRU(traindf,testdf,mod):
 
     return model,preddf[0]
 
+def Visualizations():
+    daygroup=df[['Load','DoW']].groupby(by='DoW').mean()
+    moddaygroup=df[['Load','ModDoW']].groupby(by='ModDoW').mean()
 
+    fig, plt=pyplot.subplots()
+    plt.bar(['Hétfő','Kedd','Szerda','Csütörtök','Péntek','Szombat','Vasárnap'],moddaygroup.Load)
+    plt.set(ylabel='Átlagos Rendszerterhelés (MW)')
+    pyplot.show()
+    '''
+    '''
+
+    dategroup=df.Load.reset_index()
+    dategroup.Time=dategroup.Time.apply(lambda x :x.strftime('%m-%d'))
+    dategroup=dategroup.groupby(by="Time").mean()
+
+    dategroup.reset_index().Load.plot().set(ylabel='Átlagos Rendszerterhelés (MW)',xlabel='Év Napja')
+
+    fig, plt=pyplot.subplots()
+    plt.plot(dategroup.index,dategroup.Load)
+    plt.set(ylabel='Átlagos Rendszerterhelés (MW)',xlabel='Hőmérséklet (°C)')
+    pyplot.show()
+
+
+
+    dategroup=df.Load.reset_index()
+    dategroup.Time=dategroup[(dategroup.Time<'2020')|(dategroup.Time>'2021')].Time.apply(lambda x :x.strftime('%m'))
+    dategroup=dategroup.groupby(by="Time").mean()
+    twentytwenty=df.Load.reset_index()
+    twentytwenty.Time=twentytwenty[(twentytwenty.Time>'2020') & (twentytwenty.Time<'2021')].Time.apply(lambda x :x.strftime('%m'))
+    twentytwenty=twentytwenty.groupby(by="Time").mean()
+    fig, plt=pyplot.subplots()
+    plt.plot(dategroup.index,dategroup.Load, color='red')
+    plt.plot(twentytwenty.index,twentytwenty.Load)
+    plt.set(ylabel='Abszolút Becslési Hiba (MW)')
+    pyplot.show()
+
+    autocorrelation_plot(df['Load'])
+    pyplot.show()
+
+    fig, plt=pyplot.subplots()
+    plt.plot(lstmfor.index,abs(lstmfor-testdf[168:].Load))
+    plt.set(ylabel='Abszolút Becslési Hiba (MW)')
+    pyplot.show()
+
+    dategroup=df.Load.reset_index()
+    dategroup.Time=dategroup[(dategroup.Time<'2019.06')&(dategroup.Time>'2019.04')].Time.apply(lambda x :x.strftime('%H'))
+    dategroup=dategroup.groupby(by="Time").mean()
+    twentytwenty=df.Load.reset_index()
+    twentytwenty.Time=twentytwenty[(twentytwenty.Time>'2020.04') & (twentytwenty.Time<'2020.06')].Time.apply(lambda x :x.strftime('%H'))
+    twentytwenty=twentytwenty.groupby(by="Time").mean()
+    fig, plt=pyplot.subplots()
+    plt.plot(dategroup.index,dategroup.Load, label='2019 április-május', color='g')
+    plt.plot(twentytwenty.index,twentytwenty.Load, label='2020 április-május', color='C1')
+    plt.set(ylabel='Átlagos rendszerterhelés (MW)', xlabel='Nap órája')
+    plt.legend()
+    pyplot.show()
+
+    fig, plt=pyplot.subplots()
+    armafor.index=testdf.index
+    ser=pd.Series()
+    for x in range(0,len(armafor),168):
+        ser[armafor.index[x]]=abs(armafor[x:x+168]-testdf.Load[x:x+168]).mean()
+    ser.plot()
+    plt.set(ylabel='Abszolút Becslési Hiba (MW)')
+    pyplot.show()
+
+
+
+
+#Import and format data
 LoadLoc5year=r"Load_2019-2023.xlsx"
 WeatherLoc5year=r"Idojaras_2019-2023.csv"
-
-
-
 df=pd.DataFrame()
 df,MAVIREst=Get_Data(LoadLoc5year,WeatherLoc5year)
 df=To_Metric(df)
 df=TimeSetup(df)
 df['DayDegreeC']=DayDegree(df)
 
-'''
-daygroup=df[['Load','DoW']].groupby(by='DoW').mean()
-moddaygroup=df[['Load','ModDoW']].groupby(by='ModDoW').mean()
-
-fig, plt=pyplot.subplots()
-plt.bar(['Hétfő','Kedd','Szerda','Csütörtök','Péntek','Szombat','Vasárnap'],moddaygroup.Load)
-plt.set(ylabel='Átlagos Rendszerterhelés (MW)')
-pyplot.show()
-'''
-'''
-
-dategroup=df.Load.reset_index()
-dategroup.Time=dategroup.Time.apply(lambda x :x.strftime('%m-%d'))
-dategroup=dategroup.groupby(by="Time").mean()
-
-dategroup.reset_index().Load.plot().set(ylabel='Átlagos Rendszerterhelés (MW)',xlabel='Év Napja')
-
-fig, plt=pyplot.subplots()
-plt.plot(dategroup.index,dategroup.Load)
-plt.set(ylabel='Átlagos Rendszerterhelés (MW)',xlabel='Hőmérséklet (°C)')
-pyplot.show()
-
-
-
-dategroup=df.Load.reset_index()
-dategroup.Time=dategroup[(dategroup.Time<'2020')|(dategroup.Time>'2021')].Time.apply(lambda x :x.strftime('%m'))
-dategroup=dategroup.groupby(by="Time").mean()
-twentytwenty=df.Load.reset_index()
-twentytwenty.Time=twentytwenty[(twentytwenty.Time>'2020') & (twentytwenty.Time<'2021')].Time.apply(lambda x :x.strftime('%m'))
-twentytwenty=twentytwenty.groupby(by="Time").mean()
-fig, plt=pyplot.subplots()
-plt.plot(dategroup.index,dategroup.Load, color='red')
-plt.plot(twentytwenty.index,twentytwenty.Load)
-plt.set(ylabel='Abszolút Becslési Hiba (MW)')
-pyplot.show()
-
-autocorrelation_plot(df['Load'])
-pyplot.show()
-
-fig, plt=pyplot.subplots()
-plt.plot(lstmfor.index,abs(lstmfor-testdf[168:].Load))
-plt.set(ylabel='Abszolút Becslési Hiba (MW)')
-pyplot.show()
-
-dategroup=df.Load.reset_index()
-dategroup.Time=dategroup[(dategroup.Time<'2019.06')&(dategroup.Time>'2019.04')].Time.apply(lambda x :x.strftime('%H'))
-dategroup=dategroup.groupby(by="Time").mean()
-twentytwenty=df.Load.reset_index()
-twentytwenty.Time=twentytwenty[(twentytwenty.Time>'2020.04') & (twentytwenty.Time<'2020.06')].Time.apply(lambda x :x.strftime('%H'))
-twentytwenty=twentytwenty.groupby(by="Time").mean()
-fig, plt=pyplot.subplots()
-plt.plot(dategroup.index,dategroup.Load, label='2019 április-május', color='g')
-plt.plot(twentytwenty.index,twentytwenty.Load, label='2020 április-május', color='C1')
-plt.set(ylabel='Átlagos rendszerterhelés (MW)', xlabel='Nap órája')
-plt.legend()
-pyplot.show()
-
-fig, plt=pyplot.subplots()
-armafor.index=testdf.index
-ser=pd.Series()
-for x in range(0,len(armafor),168):
-    ser[armafor.index[x]]=abs(armafor[x:x+168]-testdf.Load[x:x+168]).mean()
-ser.plot()
-plt.set(ylabel='Abszolút Becslési Hiba (MW)')
-pyplot.show()
-
-'''
-
-
-
-
-
+#Select variables and create train-test split
 keepdf=df.drop(labels=df.columns.tolist()[8:-8]+['tmpc','p01mm','Hour','Holiday','DoW'], axis=1)
 keepdf=keepdf[keepdf.Load>0]
 train_size = int(len(keepdf) * 0.8)
@@ -334,13 +329,16 @@ train_size = int(len(keepdf) * 0.8)
 traindf = keepdf[:train_size]
 testdf = keepdf[train_size:]
 
+
+#Create ARMAX model and 1-year-ahead prediction
 armatime=time.time()
 arma=FitArma(traindf)
-#Plots(arma)
 armafor=arma.predict(start=len(traindf), end=len(keepdf)-1,exog=testdf.iloc[:,1:])
 armaRsq=r2_score(testdf.Load,armafor)
 armatime=time.time()-armatime
 
+
+#Create LSTM model and 1-year-ahead prediciton
 search=FitLSTM(traindf)
 res=pd.DataFrame(data=search.cv_results_)
 opt=res[res.rank_test_score==1].reset_index(drop=True)
@@ -350,6 +348,7 @@ lstmtime=time.time()-lstmtime
 lstmfor.index=testdf.Load[168:].index
 lstmRsq=r2_score(testdf.Load[168:],lstmfor)
 
+#Create GRU model and 1-year-ahead prediciton
 searchGRU=FitGRU(traindf)
 resGRU=pd.DataFrame(data=searchGRU.cv_results_)
 optGRU=res[resGRU.rank_test_score==1].reset_index(drop=True)
@@ -359,7 +358,7 @@ GRUfor.index=testdf.Load[168:].index
 gruRsq=r2_score(testdf.Load[168:],GRUfor)
 grutime=time.time()-grutime
 
-
+#Create hourly predictions for GRNNs
 lstmpredtime=time.time()
 transf=MinMaxScaler(feature_range=(0, 1))
 scaledf = transf.fit_transform(keepdf)
@@ -388,6 +387,7 @@ grupredtime=time.time()-grupredtime
 
 
 
+#Create 1-day-ahead predicitons with GRNNs
 transf=MinMaxScaler(feature_range=(0, 1))
 scaledf = transf.fit_transform(keepdf)
 x,y=LSTMcreateXY(scaledf,168)
@@ -413,7 +413,7 @@ preddf=pd.DataFrame(transf.inverse_transform(preddf),index=dpredgru.index)
 dpredgru=preddf[0]
 
 
-
+#Create hourly and 1-day-ahead predictions with ARMAX
 armapredtime=time.time()
 armapreds=pd.Series()
 for r in range(int(keepdf.shape[0]*0.8),keepdf.shape[0],1):
@@ -426,7 +426,7 @@ for r in range(int(keepdf.shape[0]*0.8),keepdf.shape[0],24):
     armad=pd.concat([armad,ManualARMAX(arma,24,keepdf,r-1,24)])
 armapredtime=time.time()-armapredtime
 
-
+#Calculate errros
 lstmerror=lstmpreds-testdf.Load[168:]
 gruerror=grupreds-testdf.Load[168:]
 errordelta=abs(gruerror)-abs(lstmerror)
@@ -434,6 +434,7 @@ lstmpcterror=lstmerror/testdf.Load[168:]
 grupcterror=gruerror/testdf.Load[168:]
 pctdelta=abs(lstmpcterror)-abs(grupcterror)
 
+#Check performance on holidays
 holidaylist=list(map(lambda x: x in holidays.HU(years=[*range(pctdelta.index.year.tolist()[0],pctdelta.index.year.tolist()[-1])]),pctdelta.index.tolist()))
 pctdelta[holidaylist].mean()
 
@@ -441,9 +442,10 @@ slope, intercept = np.polyfit(range(0,errordelta.shape[0]),errordelta, 1)
 pyplot.plot(testdf.Load[168:].index.tolist(),errordelta,label="Difference")
 pyplot.plot(testdf.Load[168:].index.tolist(), slope*range(0,errordelta.shape[0]) + intercept, '-', label='Trend Line')
 pyplot.axvspan(testdf.Load[168:].index.tolist()[1400], testdf.Load[168:].index.tolist()[1483], color='gray', alpha=0.3)
-
 pyplot.show()
 
+
+#Accuracy of MAVIR estimation
 mavir=pd.DataFrame(MAVIREst)
 kopy=keepdf.copy()
 kopy=kopy.join(mavir,how='left')
@@ -451,7 +453,7 @@ kopy=kopy[kopy['MAVIR Est']>0]
 r2_score(kopy.Load.iloc[int(keepdf.shape[0]*0.8):],kopy['MAVIR Est'].iloc[int(keepdf.shape[0]*0.8):])
 
 
-
+#Compare accuracy metrics
 mean_squared_error(keepdf.iloc[int((scaledf.shape[0]-168)*0.8)+168:,0],grupreds)
 mean_squared_error(keepdf.iloc[int((scaledf.shape[0]-168)*0.8)+168:,0],dpredlstm)
 mean_squared_error(keepdf.iloc[int((scaledf.shape[0]-168)*0.8)+168:,0],lstmpreds)
@@ -474,6 +476,7 @@ r2_score(keepdf.Load.iloc[int(keepdf.shape[0]*0.8):],armapreds)
 r2_score(keepdf.Load.iloc[int(keepdf.shape[0]*0.8):-19],armad)
 r2_score(kopy.Load.iloc[int(keepdf.shape[0]*0.8):],kopy['MAVIR Est'].iloc[int(keepdf.shape[0]*0.8):])
 
+#Create errors dataframe
 forcasts=pd.DataFrame()
 forcasts['LSTM']=dpredlstm
 forcasts['GRU']=dpredgru
@@ -484,47 +487,44 @@ errors=pd.DataFrame()
 for i in forcasts.columns.tolist():
     errors[i]=abs(forcasts.loc[:,i]-testdf.Load[-forcasts.shape[0]-20:-20])
 
-'''
-errors['DoW']=errors.index.dayofweek
-dayavgerror=errors.groupby(by='DoW').mean()
-dayavgerror['Day']=['Hétfő','Kedd','Szerda','Csütörtök','Péntek','Szombat','Vasárnap']
-dayavgerror.set_index('Day').plot().set(ylabel='Abszolút Becslési Hiba (MW)',xlabel=None)
-pyplot.show()
+def ResultVisualizations():
+    errors['DoW']=errors.index.dayofweek
+    dayavgerror=errors.groupby(by='DoW').mean()
+    dayavgerror['Day']=['Hétfő','Kedd','Szerda','Csütörtök','Péntek','Szombat','Vasárnap']
+    dayavgerror.set_index('Day').plot().set(ylabel='Abszolút Becslési Hiba (MW)',xlabel=None)
+    pyplot.show()
 
 
 
-errors['Temp']=df.tmpc[-forcasts.shape[0]-21:-20]
-fig, axs = pyplot.subplots(1, 3, figsize=(15, 5))
-s=3
+    errors['Temp']=df.tmpc[-forcasts.shape[0]-21:-20]
+    fig, axs = pyplot.subplots(1, 3, figsize=(15, 5))
+    s=3
 
-heatmap, xedges, yedges = np.histogram2d(errors[errors.LSTM<600].Temp, errors[errors.LSTM<600].LSTM, bins=50)
-extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
-heatmap = gaussian_filter(heatmap, sigma=s)
-axs[0].imshow(heatmap.T, extent=extent, origin='lower', aspect=0.08, cmap='plasma')
-axs[0].set_title('LSTM')
-
-
-heatmap, xedges, yedges = np.histogram2d(errors[errors.GRU<600].Temp, errors[errors.GRU<600].GRU, bins=50)
-extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
-heatmap = gaussian_filter(heatmap, sigma=s)
-axs[1].imshow(heatmap.T, extent=extent, origin='lower', aspect=0.08, cmap='plasma')
-axs[1].set_title('GRU')
-axs[1].set_xlabel('Hőmérséklet (°C)')
-
-heatmap, xedges, yedges = np.histogram2d(errors[errors.ARMAX<600].Temp, errors[errors.ARMAX<600].ARMAX, bins=50)
-extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
-heatmap = gaussian_filter(heatmap, sigma=s)
-axs[2].imshow(heatmap.T, extent=extent, origin='lower', aspect=0.08, cmap='plasma')
-axs[2].set_title('ARMAX')
-pyplot.show()
-
-avgerrors=pd.DataFrame()
-for i in range(0,errors.shape[0],24*30):
-    avgerrors[errors.index[-i]]=errors[-i-24*30:-i].mean()
-avgerrors=avgerrors.T
-avgerrors.plot()
-pyplot.show()
+    heatmap, xedges, yedges = np.histogram2d(errors[errors.LSTM<600].Temp, errors[errors.LSTM<600].LSTM, bins=50)
+    extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
+    heatmap = gaussian_filter(heatmap, sigma=s)
+    axs[0].imshow(heatmap.T, extent=extent, origin='lower', aspect=0.08, cmap='plasma')
+    axs[0].set_title('LSTM')
 
 
-errors.plot()
-'''
+    heatmap, xedges, yedges = np.histogram2d(errors[errors.GRU<600].Temp, errors[errors.GRU<600].GRU, bins=50)
+    extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
+    heatmap = gaussian_filter(heatmap, sigma=s)
+    axs[1].imshow(heatmap.T, extent=extent, origin='lower', aspect=0.08, cmap='plasma')
+    axs[1].set_title('GRU')
+    axs[1].set_xlabel('Hőmérséklet (°C)')
+
+    heatmap, xedges, yedges = np.histogram2d(errors[errors.ARMAX<600].Temp, errors[errors.ARMAX<600].ARMAX, bins=50)
+    extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
+    heatmap = gaussian_filter(heatmap, sigma=s)
+    axs[2].imshow(heatmap.T, extent=extent, origin='lower', aspect=0.08, cmap='plasma')
+    axs[2].set_title('ARMAX')
+    pyplot.show()
+
+    avgerrors=pd.DataFrame()
+    for i in range(0,errors.shape[0],24*30):
+        avgerrors[errors.index[-i]]=errors[-i-24*30:-i].mean()
+    avgerrors=avgerrors.T
+    avgerrors.plot()
+    pyplot.show()
+    errors.plot()
